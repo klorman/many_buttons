@@ -74,13 +74,14 @@ int main() {
 	txCreateWindow(1300, 700);
 	txBegin();
 	CoordSys vector_space({ 0, 0 }, { 1300, 500 }, 25, 35, "vector space");
-	Button buttons[] = { Button({ 200,  550 }, { 300, 600 }, "sin", sin),
-						 Button({ 350,  550 }, { 450, 600 }, "cos", cos),
-						 Button({ 500,  550 }, { 600, 600 }, "tg", tan),
-						 Button({ 650,  550 }, { 750, 600 }, "abs", abs),
-						 Button({ 800,  550 }, { 900, 600 }, "log", log),
-						 Button({ 950,  550 }, { 1050, 600 }, "log10", log10),
-						 Button({ 0,  0 }, { 0, 0 }, NULL, NULL) };
+	Button buttons[] = { 	Button({ 200,  550 }, { 300, 600 }, "sin", sin),
+				Button({ 350,  550 }, { 450, 600 }, "cos", cos),
+				Button({ 500,  550 }, { 600, 600 }, "tg", tan),
+				Button({ 650,  550 }, { 750, 600 }, "abs", abs),
+				Button({ 800,  550 }, { 900, 600 }, "log", log),
+				Button({ 950,  550 }, { 1050, 600 }, "log10", log10),
+				Button({ 0,  0 }, { 0, 0 }, NULL, NULL) };
+	
 	create_working_space(vector_space, buttons);
 	while (txMouseButtons() != 3) {
 		for (int i = 0; buttons[i].name_ != NULL; i++) {
