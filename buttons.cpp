@@ -4,6 +4,8 @@
 #include <cmath>
 
 RGBQUAD* Video_memory = NULL;
+typedef void (*func_t) (void);
+typedef double(*graph_t)(double x);
 
 struct plot {
 	double x, y, z;
@@ -15,6 +17,7 @@ class CoordSys {
 	double scaleX_, scaleY_;
 	const char* signature_;
 public:
+	void draw_graphic(graph_t function, COLORREF color);
 	plot to_pixels(plot coords);
 	void draw_pixel(plot coords, plot color_of_point, double size_of_window);
 	void draw_point(plot coords, COLORREF color_of_point, double R);
@@ -22,7 +25,6 @@ public:
 	void draw_grid();
 	void draw_axis();
 	void set_color_back();
-	void write_signature();
 	CoordSys(plot coords0, plot coords1, double scaleX, double scaleY, const char* signature) {
 		coords0_ = coords0;
 		coords1_ = coords1;
@@ -46,72 +48,193 @@ public:
 	}
 };
 
-typedef double (*func_t) (double x);
 
-class Button {
-	plot coords0_, coords1_;
+class BasicButton {
 public:
+	plot coords0_, coords1_;
 	func_t function_;
 	const char* name_;
-	void draw_button();
-	bool if_button_pressed();
-	Button(plot coords0, plot coords1, const char* name, func_t function) {
-		coords0_ = coords0;
-		coords1_ = coords1;
-		name_ = name;
-		function_ = function;
+	virtual void draw_button() {
+		txSetColor(TX_LIGHTRED);
+		txLine(coords0_.x, coords0_.y, coords1_.x, coords1_.y);
+		txLine(coords1_.x, coords0_.y, coords0_.x, coords1_.y);
+		txDrawText(coords0_.x, coords0_.y, coords1_.x, coords1_.y, name_);
 	}
+
+	virtual bool if_button_pressed() {
+		if (txMouseButtons() == 1 &&
+			txMouseX() >= coords0_.x &&
+			txMouseX() <= coords1_.x &&
+			txMouseY() >= coords0_.y &&
+			txMouseY() <= coords1_.y) {
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+
+	BasicButton(plot coords0, plot coords1, const char* name, func_t function):
+		coords0_ (coords0),
+		coords1_ (coords1),
+		name_ (name),
+		function_ (function)
+	{}
 };
 
-void create_working_space(CoordSys vector_space, Button buttons[]);
-void draw_graphic(CoordSys vector_space, func_t function, COLORREF color);
+class RectButton : public BasicButton {
+public:
+	virtual void draw_button() override {
+		txSetColor(TX_LIGHTGREEN);
+		txSetFillColor(TX_BLACK);
+		txRectangle(coords0_.x, coords0_.y, coords1_.x, coords1_.y);
+		txDrawText(coords0_.x, coords0_.y, coords1_.x, coords1_.y, name_);
+	}
+
+	RectButton(plot coords0, plot coords1, const char* name, func_t function):
+		BasicButton(coords0, coords1, name, function)
+	{}
+};
+
+
+class CircButton : public BasicButton {
+	double R_ = sqrt((coords1_.x - coords0_.x) * (coords1_.x - coords0_.x) + (coords1_.y - coords0_.y) * (coords1_.y - coords0_.y)) / 3;
+	plot coord_of_centre_{ (coords0_.x + coords1_.x) / 2 , (coords0_.y + coords1_.y) / 2 };
+public:
+	virtual void draw_button() override {
+		txSetColor(TX_LIGHTGREEN);
+		txSetFillColor(TX_BLACK);
+		txCircle(coord_of_centre_.x, coord_of_centre_.y, R_);
+		txDrawText(coords0_.x, coords0_.y, coords1_.x, coords1_.y, name_);
+	}
+
+	virtual bool if_button_pressed() override {
+		if (txMouseButtons() == 1 && sqrt((txMouseX() - coord_of_centre_.x)*(txMouseX() - coord_of_centre_.x) + 
+										  (txMouseY() - coord_of_centre_.y)*(txMouseY() - coord_of_centre_.y)) < R_) {
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+
+	CircButton(plot coords0, plot coords1, const char* name, func_t function) :
+		BasicButton(coords0, coords1, name, function)
+	{}
+};
+
+
+class EllipseButton : public BasicButton {
+	plot coord_of_centre_{ (coords0_.x + coords1_.x) / 2 , (coords0_.y + coords1_.y) / 2 };
+	double a_ = (coords1_.x - coords0_.x) / 2;
+	double b_ = (coords1_.y - coords0_.y) / 2;
+public:
+	virtual void draw_button() override {
+		txSetColor(TX_LIGHTGREEN);
+		txSetFillColor(TX_BLACK);
+		txEllipse(coords0_.x, coords0_.y, coords1_.x, coords1_.y);
+		txDrawText(coords0_.x, coords0_.y, coords1_.x, coords1_.y, name_);
+	}
+	virtual bool if_button_pressed() override {
+		if (txMouseButtons() == 1 && ((txMouseX() - coord_of_centre_.x) * (txMouseX() - coord_of_centre_.x)) / (a_*a_) +
+									 ((txMouseY() - coord_of_centre_.y) * (txMouseY() - coord_of_centre_.y)) / (b_*b_) < 1) {
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
+	EllipseButton(plot coords0, plot coords1, const char* name, func_t function) :
+		BasicButton(coords0, coords1, name, function)
+	{}
+};
+
+
+void create_working_space(BasicButton* buttons[]);
+void draw_sin();
+void draw_cos();
+void draw_tan();
+void draw_abs();
+void draw_log();
+void draw_log10();
+void clear();
 Vector operator + (Vector a, Vector b);
 Vector operator * (double koef_of_length, Vector a);
 double operator * (Vector a, Vector b);
 
+CoordSys vector_space({ 0, 0 }, { 1300, 500 }, 25, 35, "vector space");
 
 int main() {
 	txCreateWindow(1300, 700);
 	txBegin();
-	CoordSys vector_space({ 0, 0 }, { 1300, 500 }, 25, 35, "vector space");
-	Button buttons[] = { 	Button({ 200,  550 }, { 300, 600 }, "sin", sin),
-				Button({ 350,  550 }, { 450, 600 }, "cos", cos),
-				Button({ 500,  550 }, { 600, 600 }, "tg", tan),
-				Button({ 650,  550 }, { 750, 600 }, "abs", abs),
-				Button({ 800,  550 }, { 900, 600 }, "log", log),
-				Button({ 950,  550 }, { 1050, 600 }, "log10", log10),
-				Button({ 0,  0 }, { 0, 0 }, NULL, NULL) };
-	
-	create_working_space(vector_space, buttons);
+
+	RectButton sin_button({ 350,  550 }, { 450, 600 }, "sin", draw_sin);
+	CircButton cos_button({ 500,  550 }, { 600, 600 }, "cos", draw_cos);
+	EllipseButton tan_button({ 650, 550 }, { 750, 600 }, "tan", draw_tan);
+	BasicButton clear_button({ 800, 550 }, { 900, 600 }, "clear", clear);
+	BasicButton null_button({ 0,  0 }, { 0, 0 }, NULL, NULL);
+	BasicButton* buttons[] = { &sin_button, &cos_button, &tan_button, &clear_button, &null_button };
+	create_working_space(buttons);
 	while (txMouseButtons() != 3) {
-		for (int i = 0; buttons[i].name_ != NULL; i++) {
-			if (buttons[i].if_button_pressed()) {
-				draw_graphic(vector_space, buttons[i].function_, RGB(0, 191, 255));
+		for (int i = 0; (*buttons[i]).name_ != NULL; i++) {
+			if ((*buttons[i]).if_button_pressed()) {
+				(*buttons[i]).function_();
 			}
 		}
 		txSleep();
 	}
 }
 
-void create_working_space(CoordSys vector_space, Button buttons[]) {
+void create_working_space(BasicButton* buttons[]) {
 	vector_space.draw_window();
 	vector_space.draw_grid();
 	vector_space.draw_axis();
 	vector_space.set_color_back();
-	//vector_space.write_signature();
 	
-	for (int i = 0; buttons[i].name_ != NULL; i++) {
-		buttons[i].draw_button();
+	for (int i = 0; (*buttons[i]).name_ != NULL; i++) {
+		(*buttons[i]).draw_button();
 	}
 }
 
 
-void draw_graphic(CoordSys vector_space, func_t function, COLORREF color)
+void CoordSys::draw_graphic(graph_t function, COLORREF color)
 {
-	for (double x = 0.1; x <= 600; x = x + 0.1)
+	for (double x = -600; x <= 600; x = x + 0.1)
 	{
-		vector_space.draw_point({ x,function(x) }, color, 2);
+		(*this).draw_point({ x,function(x) }, color, 2);
 	}
+}
+
+
+void draw_sin() {
+	vector_space.draw_graphic(sin, TX_LIGHTRED);
+}
+
+void draw_cos() {
+	vector_space.draw_graphic(cos, TX_LIGHTGREEN);
+}
+
+void draw_tan() {
+	vector_space.draw_graphic(tan, RGB(0, 191, 255));
+}
+
+void draw_abs() {
+	vector_space.draw_graphic(abs, RGB(0, 191, 255));
+}
+
+void draw_log() {
+	vector_space.draw_graphic(log, RGB(0, 191, 255));
+}
+
+void draw_log10() {
+	vector_space.draw_graphic(log10, RGB(0, 191, 255));
+}
+
+void clear() {
+	vector_space.draw_window();
+	vector_space.draw_grid();
+	vector_space.draw_axis();
+	vector_space.set_color_back();
 }
 
 double Vector::length() {
@@ -154,7 +277,12 @@ void CoordSys::draw_point(plot coords, COLORREF color_of_point, double R) {
 	txSetFillColor(color_of_point);
 	txSetColor(color_of_point);
 	plot rec_coord = to_pixels(coords);
-	txCircle(rec_coord.x, rec_coord.y, R);
+	if (rec_coord.x > vector_space.coords0_.x &&
+		rec_coord.x < vector_space.coords1_.x &&
+		rec_coord.y > vector_space.coords0_.y &&
+		rec_coord.y < vector_space.coords1_.y) {
+		txCircle(rec_coord.x, rec_coord.y, R);
+	}
 }
 
 
@@ -199,33 +327,6 @@ void CoordSys::draw_axis() {
 
 void CoordSys::set_color_back() {
 	txSetFillColor(TX_WHITE);
-}
-
-
-void CoordSys::write_signature() {
-	txDrawText(coords0_.x - 30, coords1_.y + 15, coords1_.x, coords1_.y + 30, signature_);
-}
-
-
-void Button::draw_button() {
-	txSetColor(TX_LIGHTGREEN);
-	txSetFillColor(TX_BLACK);
-	txRectangle(coords0_.x, coords0_.y, coords1_.x, coords1_.y);
-	txDrawText(coords0_.x, coords0_.y, coords1_.x, coords1_.y, name_);
-}
-
-
-bool Button::if_button_pressed() {
-	if (txMouseButtons() == 1 &&
-		txMouseX() >= coords0_.x &&
-		txMouseX() <= coords1_.x &&
-		txMouseY() >= coords0_.y &&
-		txMouseY() <= coords1_.y) {
-		return TRUE;
-	}
-	else {
-		return FALSE;
-	}
 }
 
 
