@@ -149,8 +149,49 @@ public:
 	{}
 };
 
+const int Number_of_buttons = 50;
 
-void create_working_space(BasicButton* buttons[]);
+
+class ManagerButton {
+public:
+	BasicButton* buttons_[Number_of_buttons];
+
+	void add(BasicButton* button) {
+		int i;
+		for (i = 0; buttons_[i] != NULL; ++i) {}
+		buttons_[i] = button;
+	}
+
+	void draw_buttons() {
+		for (int i = 0; buttons_[i] != NULL; i++) {
+			(*buttons_[i]).draw_button();
+		}
+	}
+
+	void run() {
+		while (txMouseButtons() != 3) {
+			for (int i = 0; buttons_[i] != NULL; i++) {
+				if ((*buttons_[i]).if_button_pressed()) {
+					(*buttons_[i]).function_();
+				}
+			}
+			txSleep();
+		}
+	}
+
+	ManagerButton() {
+		for (int i = 0; i < Number_of_buttons; i++) {
+			buttons_[i] = NULL;
+		}
+	}
+	~ManagerButton() {
+		for (int i = 0; buttons_[i] != NULL; i++) {
+			delete buttons_[i];
+		}
+	}
+};
+
+
 void draw_sin();
 void draw_cos();
 void draw_tan();
@@ -168,32 +209,28 @@ int main() {
 	txCreateWindow(1300, 700);
 	txBegin();
 
-	RectButton sin_button({ 350,  550 }, { 450, 600 }, "sin", draw_sin);
-	CircButton cos_button({ 500,  550 }, { 600, 600 }, "cos", draw_cos);
-	EllipseButton tan_button({ 650, 550 }, { 750, 600 }, "tan", draw_tan);
-	BasicButton clear_button({ 800, 550 }, { 900, 600 }, "clear", clear);
-	BasicButton null_button({ 0,  0 }, { 0, 0 }, NULL, NULL);
-	BasicButton* buttons[] = { &sin_button, &cos_button, &tan_button, &clear_button, &null_button };
-	create_working_space(buttons);
-	while (txMouseButtons() != 3) {
-		for (int i = 0; (*buttons[i]).name_ != NULL; i++) {
-			if ((*buttons[i]).if_button_pressed()) {
-				(*buttons[i]).function_();
-			}
-		}
-		txSleep();
-	}
-}
-
-void create_working_space(BasicButton* buttons[]) {
 	vector_space.draw_window();
 	vector_space.draw_grid();
 	vector_space.draw_axis();
 	vector_space.set_color_back();
-	
-	for (int i = 0; (*buttons[i]).name_ != NULL; i++) {
-		(*buttons[i]).draw_button();
-	}
+
+	ManagerButton manager;
+
+	/*RectButton    sin_button(  { 350,  550 }, { 450, 600 }, "sin", draw_sin); manager.add(&sin_button);
+	CircButton    cos_button(  { 500,  550 }, { 600, 600 }, "cos", draw_cos); manager.add(&cos_button);
+	EllipseButton tan_button(  { 650, 550 },  { 750, 600 }, "tan", draw_tan); manager.add(&tan_button);
+	BasicButton   clear_button({ 800, 550 },  { 900, 600 }, "clear", clear);  manager.add(&clear_button);
+	EllipseButton abs_button({ 950, 550 }, { 1050, 600 }, "abs", draw_abs);  manager.add(&abs_button);*/
+
+	manager.add(new RectButton(   { 350, 550 }, { 450, 600 }, "sin", draw_sin));
+	manager.add(new CircButton(   { 500, 550 }, { 600, 600 }, "cos", draw_cos));
+	manager.add(new EllipseButton({ 650, 550 }, { 750, 600 }, "tan", draw_tan));
+	manager.add(new BasicButton(  { 800, 550 }, { 900, 600 }, "clear", clear));
+	manager.add(new EllipseButton({ 950, 550 }, { 1050, 600 }, "abs", draw_abs));
+
+	manager.draw_buttons();
+
+	manager.run();
 }
 
 
